@@ -1,0 +1,201 @@
+---
+title: "Condicionales, loops y funciones"
+author: "Cristhian Jaramillo"
+date: "21 de febrero"
+output: html_document
+---
+
+### Condicionales
+
+Copndicionales ejecutan bloques de código cuando existe una cierta condición lógica sucede o no. Recuerden la lista de operadores que les mostré la anterior clase.
+
+```{r}
+1 != 2 # no es igual a
+2 < 2 # menor que
+2 <= 2 # menor que o igual a
+2 > 2 # mayor que
+2 >= 2 # mayor que o igual a 
+(2 < 2) | (2 <= 2) # o
+(2 < 2) & (2 <= 2) # y
+2 %in% c(0,3,24) # pertenencia a un grupo
+is.na(NA) # es NA
+!is.na(42) # no es NA
+```
+
+Usando las condicionales "if" y "else" nos permite correr bloques de código dependiendo de una condición lógica. Por ejemplo, usando el if:
+
+
+```{r}
+x <- 5
+if (x > 4) {
+  print("Si la condicional es verdadera, entonces imprime")
+  }
+```
+
+Podemos también usar condicionales en caso de que la primera no ocurra. Esto se puede conseguir con el if-else:
+
+```{r}
+x <- 3
+if (x > 4) {
+  print("Si la condicional es verdadera, entonces imprime")
+} else {
+  print("Si la condicional no es verdadera, entonces no")
+  }
+```
+
+Finalmente, podemos tener múltiples condiciones.
+
+```{r}
+x <- 2
+y <- 3
+if (x < y) {
+    print("Si la primera condicional es verdadera, entonces imprime")
+  } else if (x > y) {
+    print("Si la segunda condicional es verdadera entonces imprime")
+  } else {
+    print("Si ninguna condicional es verdadera, entonces son iguales")
+  }
+```
+
+### Loops
+
+Usamos loops cuando queremos correr la misma funciones en diferentes unidades. Por ejemplo, si queremos hacer la misma operanción matemática en ciertos números.
+
+"For" es el comando más común al implementar loops en R:
+
+```{r}
+for (i in 1:10) {
+    print(i)
+}
+```
+
+Por cada iteración, i toma un valor diferente; "i" puede ser cualquier cosa. Por ejemplo, podemos llamarlo number:
+
+```{r}
+for (number in 1:10) {
+    print(number)
+}
+```
+
+Podemos iterar diferentes objetos en los loops:
+
+```{r}
+vector_of_texts <- c("hello", "world", "in", "a", "for", "loop")
+for (text in vector_of_texts) {
+    print(text)
+}
+```
+
+Otro tipo de loope es el while. Este corre el código mientras la condición lógica sea verdadera.
+
+```{r}
+x <- 1
+while (x < 11) {
+    x <- x + 1  
+    print(x)
+}
+```
+
+Los loops también pueden ser flexibles. Por ejemplo, un loop puede correr hasta que se proporcione una determinada entrada y se establezca una condición en falso. Hay que tener cuidado con los bucles while pues puede no crear condiciones que siempre sean verdaderas. Esto conduce a bucles infinitos. Por ejemplo, "while (2 < 4) {print("hello word")}" se ejecutaría para siempre.
+
+Una buena característica de los loops es que podemos usar valores de la iteración anterior. Por ejemplo, podemos obtener los primeros 40 términos en la secuencia de Fibonacci usando un bucle for.
+
+```{r}
+
+fib <- c(0, 1, rep(NA, 38)) # initialize fib sequence with a vector (0, 1, NA, NA, NA, NA, ...)
+
+for (i in 3:40) {
+  fib[i] <- fib[i - 1] + fib[i - 2]
+}
+fib
+```
+
+Noten que aquí hemos creado vectores vacíos que luego son coompletados por el loop. Un ejemplo más sencillo es el siguiente:
+
+```{r}
+values <- rep(NA, 10)
+for (i in 1:10) {
+    values[i] <- i
+}
+values
+```
+
+Una estructura que se usa con frecuencia es un loop que almacena algunos datos en diferentes elementos dentro de una lista. Esto es muy útil cuando el resultado de cada iteración sea un marco de datos, por ejemplo, al descargar datos de una API.
+
+```{r}
+# Crear una lista vacía
+grades <- list()
+# Loop over 5 estudiantes
+for (i in 1:5) {
+  # Crear un data frame con datos de los estudiantes
+  student <- data.frame(id = i,
+                        initial = sample(LETTERS, 1),
+                        grade = runif(n = 1, min = 0, max = 100),
+                        stringsAsFactors = FALSE)
+  grades[[i]] <- student
+}
+# Ahora tenemos una lista
+class(grades)
+# Podemos combinar esto con rbind
+grades <- do.call(rbind, grades) # es posible también combinar filas
+grades
+```
+
+### Funciones
+
+Las funciones son objetos al igual que los vectores y los marcos de datos con los que hemos trabajado, por lo que los creamos mediante una asignación. La siguiente función funciona para un solo elemento, así como para los elementos de un vector, porque el operador * se define para los elementos.
+
+```{r}
+times_2 <- function(x) {x * 2}
+times_2(6)
+times_2(1:5)
+```
+
+Podemos tener funciones y resultados mucho más complejos
+
+```{r}
+two_numbers <- function(x, y) {
+  my_sum <- x + y
+  my_product <- x * y
+  my_ratio <- x / y
+  return(c(my_sum, my_product, my_ratio))
+}
+two_numbers(4, 11.93)
+```
+
+Una característica conceptual clave de las funciones es que tienen su propio alcance. ¿Qué crees que devolverá la siguiente función?
+
+```{r}
+my_function <- function(z) {
+  z <- 2*z
+  return(z)
+}
+z <- 10
+
+# First output
+my_function(z)
+
+# Second outpiut
+z
+```
+
+En el código, las tareas particularmente repetidas se escriben como funciones. Por lo tanto, las funciones contienen una amplia gama de código posible.
+
+```{r}
+compare_xy <- function(x, y) {
+  if (x < y) {
+    print("y is greater than x")
+  } else if (x > y) {
+    print("x is greater than y")
+  } else {
+    print("x and y are equal")
+  }
+}
+```
+
+
+```{r}
+compare_xy(3, 4)
+compare_xy(4, 3)
+compare_xy(1, 1)
+```
