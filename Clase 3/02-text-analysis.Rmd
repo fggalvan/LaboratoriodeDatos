@@ -1,0 +1,181 @@
+---
+title: "Análisis de texto"
+author: "Cristhian Jaramillo"
+date: "23 de febrero"
+output: html_document
+---
+
+Cargando paquetes:
+
+```{r}
+library("quanteda")
+library("quanteda.textplots")
+library("tidyverse")
+library("scales")
+```
+
+
+#### 1. Introducción
+
+En R, texto puede ser guardado en vectores o en columnas de una base de datos. Algunos ejemplos son:
+
+```{r}
+exemplary_documents <- c("This is the text of a first document.", "This is a text of a second document.", "And of a third document.")
+names(exemplary_documents) <- c("Document A", "Document B", "Document C")
+exemplary_documents
+```
+
+A continuación, crearemos un objeto llamado `corpus` usando el paquete `quanteda`. Para un tutorial detallado de este paquete y de análisis de texto pueden ver este [tutorial](https://tutorials.quanteda.io/). EL objeto corpus guarda los documentos y la data contenida en un `docvars` que describe documentos individuales. Al crear el corpus para nuestro ejemplo, almacenemos el nombre y la cantidad de caracteres de cada documento como las variables del documento.
+
+```{r}
+exemplary_corpus <- corpus(exemplary_documents,docvars = data.frame(name = names(exemplary_documents),characters = str_count(exemplary_documents)))
+```
+
+This corpus consists of three documents and two docvars:
+
+```{r}
+exemplary_corpus
+```
+
+Podemos acceder el docvars de esta manera:
+
+```{r}
+docvars(exemplary_corpus)
+```
+
+#### 2. Métodos de diccionario
+
+Ahora veamos un ejemplo del mundo real, algunos discursos inaugurales de presidentes estadounidenses desde George Washington. Estos textos son parte del paquete quanteda y el objeto de corpus `data_corpus_inaugural`. Contiene 58 discursos y 4 docvars.
+
+```{r}
+data_corpus_inaugural
+```
+
+```{r}
+head(docvars(data_corpus_inaugural))
+```
+
+Con este corpus, creamos una matriz de características del documento (dfm). Tiene una fila para cada documento y una columna para cada palabra/término. Las celdas contienen recuentos de palabras en los documentos respectivos.
+
+Tengan en cuenta que la función `tokens()` hace explícito que para pasar de textos a un dfm es necesario un paso de tokenización.
+
+```{r}
+dfmplain <- data_corpus_inaugural %>%
+    tokens() %>% 
+    dfm()
+dfmplain
+```
+
+Nota: Puede haber una ligera variación en las características antes y después de eliminar la puntuación para las diferentes versiones de `quanteda`.
+
+Sin embargo, al construir un dfm de este tipo, podríamos, por ejemplo, evitar contar la puntuación o excluir otros tokens. Esto se puede hacer a través del paso de tokenización:
+
+```{r}
+dfmplain <- data_corpus_inaugural %>%
+    tokens(remove_punct = TRUE) %>% 
+    dfm()
+dfmplain
+```
+
+Ahora podemos aplicar métodos de diccionario a estos datos. Para esto, primero creamos un objeto de diccionario a partir de una lista simple con nombre. Tengan en cuenta que esta lista también podría contener dos vectores de caracteres para palabras asociadas con sentimientos positivos y negativos.
+
+```{r}
+short_dictionary <- dictionary(list(taxation = c("tax", "taxes", "taxation"),unemployment = c("unemployment", "unemployed")))
+
+short_dictionary
+```
+
+De hecho, también podemos usar nuestro conocimiento de globs y expresiones regulares para construir un diccionario.
+
+```{r}
+short_dictionary_glob <- dictionary(list(taxation = c("*tax*"),
+                                    unemployment = c("unemploy*")))
+short_dictionary_glob
+```
+
+Usando `*tax*`, las siguientes palabras son seleccionadas
+
+```{r}
+dfmplain %>% dfm_select(pattern = "*tax*", valuetype = "glob") %>% featnames()
+```
+
+Encontramos algunas palabras en las que quizás no habíamos pensado antes. Sin embargo, la lista también indica la limitación de los enfoques de diccionario: los impuestos pueden ser mencionados de manera positiva o negativa.
+
+De manera similar, podemos usar expresiones regulares para construir un diccionario (¡recuerden que el `*` tiene un significado diferente en las expresiones regulares!). Solo tenemos que indicar en la función `dfm_select` que ahora estamos buscando términos con notación de expresión regular.
+
+
+```{r}
+short_dictionary_regex <- dictionary(list(taxation = c("tax[a-z]*"),
+                                    unemployment = c("unemploy[a-z]*"))
+                               )
+dfmplain %>% dfm_select(pattern = "tax[a-z]*", valuetype = "regex") %>% featnames()
+```
+
+¿Qué se seleccionaría (o no) con "tax[a-z]+" y por qué?
+
+Con nuestro diccionario y el dfm, podemos crear un nuevo dfm que contenga la cantidad de palabras encontradas para cada uno de los dos subdiccionarios. Usamos nuestro diccionario glob y especificamos en la función `dfm_lookup` para usar la notación glob. Tenga en cuenta que en el caso del análisis de sentimientos, el dfm resultante podría, p. tenga una columna para palabras clave positivas y una columna para palabras clave de sentimiento negativo, en nuestro ejemplo tiene una para palabras de impuestos y otra para palabras de desempleo.
+
+```{r}
+dfm_dictionary <- dfm_lookup(dfmplain, dictionary = short_dictionary_glob,
+                               valuetype = "glob") # note that the function is case insensitive by default
+dfm_dictionary
+```
+
+Con esto tenemos los recuentos de palabras clave para cada documento. Sin embargo, como los documentos pueden tener diferentes longitudes, podríamos estar interesados en dividir el recuento de palabras clave por el total de palabras contenidas en los documentos.
+
+
+```{r}
+dfm_dictionary_relative <- dfm_dictionary/rowSums(dfmplain)
+dfm_dictionary_relative
+```
+
+Ahora podemos hacer un gráfico:
+
+```{r}
+
+# Transformar a data frame
+df_plot <- convert(dfm_dictionary_relative, to = "data.frame")
+
+# Graficar
+p <- ggplot(df_plot, aes(x=taxation, y=unemployment, label=doc_id))
+pq <- p + geom_point() + geom_text(hjust=-.1, size=3) +
+  theme_minimal() +
+  scale_x_continuous(expand = c(0, .001)) +
+  scale_y_continuous(labels = comma) +
+  xlab("Taxation") +
+  ylab("Unemployment")
+pq
+```
+
+#### 3. Wordclouds
+
+Otro enfoque de uso frecuente para visualizar los resultados en el análisis textual son las nubes de palabras. El tamaño de las palabras en las nubes representa su frecuencia relativa en los documentos seleccionados. Antes de representar dichas nubes de palabras, eliminemos adicionalmente las palabras vacías y los números del corpus al crear un nuevo dfm:
+
+```{r}
+dfmcleaned <- data_corpus_inaugural %>%
+    tokens(remove_punct = TRUE, remove_numbers = TRUE) %>%
+    tokens_remove(stopwords("en")) %>%
+    dfm()
+dfmcleaned
+```
+
+Para representar nubes de palabras para diferentes presidentes, debemos seleccionar documentos/filas asociados en el dfm. Esto puede hacerse a través de la información contenida en las variables del documento utilizando la función `dfm_subset` que devuelve otro dfm que es un subconjunto del original. Luego usaremos este dfm como argumento en la función `textplot_wordcloud`:
+
+```{r}
+textplot_wordcloud(dfm_subset(dfmcleaned, President == "Obama"), 
+                   rotation=0, min_size=.75, max_size=3, max_words=50)
+textplot_wordcloud(dfm_subset(dfmcleaned, President == "Trump"),
+                   rotation=0, min_size=.75, max_size=3, max_words=50)
+```
+
+¿Cómo se vería el gráfico sin eliminar las palabras vacías?
+
+```{r}
+textplot_wordcloud(dfm_subset(dfmplain, President == "Obama"),
+                   rotation=0, min_size=.75, max_size=3, max_words=50)
+```
+
+Referencias:
+
+- https://tutorials.quanteda.io/
+- http://pablobarbera.com/social-media-upf/code/02-quanteda-intro.html

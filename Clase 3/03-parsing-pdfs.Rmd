@@ -1,0 +1,83 @@
+---
+title: "Leyendo documentos PDF en R"
+author: "Cristhian Jaramillo"
+date: "23 de febrero"
+output: html_document
+---
+
+Cargar los paquetes:
+
+```{r}
+#install.packages("tesseract")
+#install.packages("pdftools")
+
+library("pdftools")
+library("stringr")
+library("quanteda")
+```
+
+
+Una pregunta común, al analizar escaneos de libros antiguos, es cómo leer/analizar el contenido textual de archivos PDF en lenguajes de programación como R o Python. Para R, el paquete [pdftools](https://cran.r-project.org/web/packages/pdftools/pdftools.pdf) tiene una variedad de funcionalidades para hacer esto.
+
+## 1.1 PDF con texto
+
+Como ejemplo, consideremos el Principia de Newton (1687) en su traducción al inglés. Para obtener el libro pueden ir al enlace https://www.google.co.uk/books/edition/Newton_s_Principia/KaAIAAAAIAAJ. A veces, los archivos también están disponibles como publicación electrónica (o los libros también se pueden descargar como texto sin formato), pero usaremos este libro como ejemplo de texto en un PDF. Tenga en cuenta que una opción para obtener muchos libros antiguos inmediatamente como objetos R es el paquete `gutenbergr` (https://cran.r-project.org/web/packages/gutenbergr/vignettes/intro.html) que se basa en en http://gutenberg.org.
+
+El PDF se analiza en R usando la función `pdf_text` que devuelve un vector de caracteres con una fila correspondiente a una página:
+
+```{r}
+principia <- pdf_text("principia.pdf")
+class(principia)
+length(principia)
+```
+
+Eliminando las primeras páginas hasta la portada y también algunas partes ilegibles.
+
+```{r}
+principia <- principia[10:length(principia)]
+principia <- str_replace_all(principia, "[\r\n]" , " ")
+```
+
+Transformando los datos en un corpus `quanteda` (cada página es un documento en este ejemplo, pero podríamos agregar páginas):
+
+```{r}
+principia_corpus <- principia %>% corpus(
+  docvars = data.frame(page=1:length(principia)))
+```
+
+Aquí sencillamente podemos hacer el análisis del corpus:
+
+```{r}
+principia_dfm <- principia_corpus %>%
+    tokens() %>% 
+    dfm()
+principia_dfm
+```
+
+### 1.2 PDF que solo contienen texto en imágenes
+
+Las cosas se vuelven mucho más complicadas si los archivos PDF no contienen texto legible por máquina, sino imágenes como escaneos. Por lo general, puede detectar este caso si no puede seleccionar texto en un PDF con el mouse. Sin embargo, existe un software OCR (reconocimiento óptico de caracteres) de código abierto que se puede utilizar. En R, el paquete `tesseract` ofrece una implementación de Tesseract de Google y `pdftools` tiene una función que implícitamente llama al paquete `tesseract`. Como ejemplo, he agregado una foto de la portada de la primera edición de la Teoría general de Keynes (1936) al repositorio del curso. Lo siguiente utiliza software OCR para detectar el texto en la imagen y transformarlo en texto legible por máquina:
+
+```{r}
+general_theory <- pdf_ocr_text(pdf = "general_theory_cover.pdf", language = "eng", dpi = 300)
+general_theory
+```
+
+Esto funcionó bastante bien. Tenga en cuenta, sin embargo, que la salida sería peor si la foto también contuviera las partes de la portada que no son de texto. En general, estos algoritmos funcionan mejor con páginas de texto sin formato y las cosas se vuelven más difíciles si las páginas que contienen tablas o elementos que no son de texto. Aún así, después de un poco de limpieza, la salida puede ser lo suficientemente buena para un modelo de tipo bolsa de palabras.
+
+Nuevamente, podemos transformar la salida en un corpus y continuar desde allí:
+
+```{r}
+general_theory <- str_replace_all(general_theory, "[\r\n]" , " ")
+general_theory_corpus <- general_theory %>% corpus(
+  docvars = data.frame(page=1:length(general_theory)))
+general_theory_corpus
+```
+
+```{r}
+general_theory_dfm <- general_theory_corpus %>%
+    tokens() %>% 
+    dfm()
+general_theory_dfm # exemplary scan only has a single document/page
+```
+

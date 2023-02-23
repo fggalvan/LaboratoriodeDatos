@@ -1,0 +1,54 @@
+---
+title: "Expresiones regulares"
+author: "Cristhian Jaramillo"
+date: "23 de febrero"
+output: html_document
+---
+
+Este documento discute qué son las expresiones regulares y cómo se emplean. Para ello es necesario cargar los paquetes tidyverse y htmlwidgets.
+
+```{r}
+library("tidyverse")
+library("htmlwidgets")
+#install.packages("htmlwidgets")
+```
+
+Especificando el directorio en donde se encuentra el archivo a usar.
+
+```{r}
+current_dir <- "./"
+```
+
+Cargando el arhivo "sample_text.txt".
+
+```{r}
+sample_text <- read_file(paste(current_dir, "sample_texts.txt", sep = ""))
+```
+
+Algunas funciones que nos ayudan a reconocer expresiones regulares son `str_view`, `str_view_all`, `str_extract`, `str_extract_all`. 
+
+La función view permite ver la llave y/o expresiones regulares que coinciden con el editor de texto de R.
+
+```{r}
+str_view(sample_text, "@")
+```
+
+```{r}
+str_view_all(sample_text, "@")
+```
+
+```{r}
+str_view_all(sample_text, "a|e")
+```
+
+La función de str_extract, por otro lado, permite extraer los caracteres coincidentes. La siguiente expresión regular es una forma posible de  extraer los tiempos del archivo (como la barra invertida ya se usa como un símbolo de escape en cadenas normales en R, necesitamos usar una barra invertida doble para expresiones regulares ):
+
+```{r}
+str_extract(sample_text, "\\d{1,2}[:.\\s-]?\\d{0,2}")
+```
+
+```{r}
+object=str_extract_all(sample_text, "\\d{1,2}[:.\\s-]?\\d{0,2}")
+```
+
+Otras funciones útiles son `str_detect` (particularmente si trabajamos grandes vectores) y `str_count`. Algunos módulos de ayuda son: http://r4ds.had.co.nz/strings.html y https://cran.r-project.org/web/packages/stringr/vignettes/regular-expressions.html.
